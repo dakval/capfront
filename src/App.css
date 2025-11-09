@@ -1,0 +1,293 @@
+/* src/App.css 파일
+  이 코드를 복사해서 src/App.css 파일의 모든 내용을 덮어쓰세요.
+  (이전에 index.css 파일의 내용은 모두 비워둔 상태여야 합니다!)
+*/
+
+/* --- [1] 전역 스타일 & 가운데 정렬 --- */
+
+/* App.css의 최상위 .App 클래스 */
+.App {
+  display: flex; /* Flexbox 레이아웃 사용 */
+  justify-content: center; /* 자식 요소를 가로축(수평) 중앙에 정렬 */
+  align-items: flex-start; /* 자식 요소를 세로축(수직) 상단에 정렬 (flex-start) */
+  min-height: 100vh; /* 화면 전체 높이를 최소 높이로 설정 */
+  padding: 5vh 1rem; /* 화면 상단 여백 및 좌우 여백 */
+  background-color: #f4f7f6; /* 앱 전체 배경색 */
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+
+/* --- [2] 메인 예측 페이지 --- */
+.main-container {
+  width: 100%;
+  max-width: 500px; /* 폼의 최대 너비 고정 */
+  padding: 2.5rem;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+}
+
+.main-container h1 {
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 2rem;
+  color: #333;
+}
+
+/* 식단 입력 (직접 입력 / 사진 첨부) 버튼 그룹 */
+.meal-input-group {
+  display: flex;
+  margin-bottom: 0.5rem;
+}
+
+.meal-input-group button {
+  flex: 1; /* 1:1 비율로 공간 차지 */
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  background-color: #f9f9f9;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.meal-input-group button:first-of-type {
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+  border-right: none;
+}
+
+.meal-input-group button:last-of-type {
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+/* 활성화된 버튼 스타일 */
+.meal-input-group button.active {
+  background-color: #007aff;
+  color: white;
+  border-color: #007aff;
+}
+
+/* 예측하기 버튼 */
+.predict-button {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background-color: #007aff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 1.5rem;
+}
+
+.predict-button:disabled {
+  background-color: #a0a0a0;
+  cursor: not-allowed;
+}
+
+.predict-button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+/* 결과 표시 영역 */
+.result-container {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.result-container h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #555;
+  font-size: 1.2rem;
+}
+
+.result-placeholder {
+  color: #888;
+  font-style: italic;
+}
+
+.result-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #007aff;
+  margin: 0;
+}
+
+.result-value span {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #333;
+  margin-left: 0.5rem;
+}
+
+
+/* --- [3] 플로팅 버튼 (로그인/회원가입) --- */
+.floating-auth-button {
+  position: fixed; /* 화면에 고정 */
+  bottom: 2rem; /* 하단에서 2rem */
+  right: 2rem; /* 우측에서 2rem */
+  width: 60px;
+  height: 60px;
+  border-radius: 50%; /* 원형 버튼 */
+  background-color: #007aff;
+  color: white;
+  font-size: 1.5rem; /* 이모지 크기 */
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.2s ease-out;
+  z-index: 900;
+}
+
+.floating-auth-button:hover {
+  transform: scale(1.1);
+}
+
+
+/* --- [4] 모달 (로그인/회원가입 창) --- */
+.modal-overlay {
+  position: fixed; /* 화면 전체 덮기 */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6); /* 반투명 검은 배경 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* 최상단에 표시 */
+}
+
+.modal-content {
+  position: relative;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  max-width: 450px; /* 모달 최대 너비 */
+  width: 90%; /* 모바일에서는 90% */
+  padding: 2.5rem;
+  box-sizing: border-box;
+  max-height: 90vh; /* 모달 최대 높이 */
+  overflow-y: auto; /* 내용 길어지면 스크롤 */
+}
+
+.modal-close-button {
+  position: absolute;
+  top: 1rem;
+  right: 1.5rem;
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #aaa;
+  cursor: pointer;
+  line-height: 1;
+}
+
+
+/* --- [5] (공통) 입력 폼 스타일 --- */
+/* (모달과 메인 페이지에서 공통으로 사용) */
+
+.input-group {
+  margin-bottom: 1.5rem;
+  width: 100%;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.input-group input[type="text"],
+.input-group input[type="password"],
+.input-group input[type="number"],
+.input-group input[type="file"] {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  font-size: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-sizing: border-box; /* 패딩이 너비를 밀어내지 않도록 */
+}
+
+/* 성별 라디오 버튼 */
+.radio-group {
+  display: flex;
+  gap: 1.5rem;
+}
+.radio-group label {
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+/* 생년월일 입력 그룹 */
+.birth-group {
+  display: flex;
+  gap: 0.5rem;
+}
+.birth-group input {
+  text-align: center;
+}
+
+/* 인증 버튼 (로그인, 회원가입) */
+.auth-button {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background-color: #007aff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 1rem;
+}
+
+/* ---!!! 여기가 아까 끊겼던 부분입니다 !!!--- */
+.auth-button:hover {
+  background-color: #0056b3;
+}
+
+.auth-links {
+  text-align: center;
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+}
+.auth-links a {
+  color: #555;
+  text-decoration: none;
+}
+.auth-links span {
+  margin: 0 0.5rem;
+  color: #ccc;
+}
+
+.auth-switch {
+  margin-top: 1rem;
+  text-align: center;
+  font-size: 0.95rem;
+  color: #555;
+}
+.auth-switch a {
+  color: #007aff;
+  font-weight: 600;
+  text-decoration: none;
+}
