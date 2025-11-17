@@ -1,11 +1,4 @@
-/* src/App.css 파일
-  이 코드를 복사해서 src/App.css 파일의 모든 내용을 덮어쓰세요.
-  (이전에 index.css 파일의 내용은 모두 비워둔 상태여야 합니다!)
-*/
-
 /* --- [1] 전역 스타일 & 가운데 정렬 --- */
-
-/* App.css의 최상위 .App 클래스 */
 .App {
   display: flex; /* Flexbox 레이아웃 사용 */
   justify-content: center; /* 자식 요소를 가로축(수평) 중앙에 정렬 */
@@ -119,7 +112,7 @@
 .result-value {
   font-size: 2.5rem;
   font-weight: 700;
-  color: #007aff;
+  color: #007aff; /* 기본 색상 (파란색) */
   margin: 0;
 }
 
@@ -157,7 +150,7 @@
 }
 
 
-/* --- [4] 모달 (로그인/회원가입 창) --- */
+/* --- [4] 모달 (로그인/회원가입/마이페이지 창) --- */
 .modal-overlay {
   position: fixed; /* 화면 전체 덮기 */
   top: 0;
@@ -176,7 +169,7 @@
   background-color: white;
   border-radius: 12px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
-  max-width: 450px; /* 모달 최대 너비 */
+  max-width: 500px; /* 모달 최대 너비 (그래프를 위해 조금 넓힘) */
   width: 90%; /* 모바일에서는 90% */
   padding: 2.5rem;
   box-sizing: border-box;
@@ -261,7 +254,6 @@
   margin-top: 1rem;
 }
 
-/* ---!!! 여기가 아까 끊겼던 부분입니다 !!!--- */
 .auth-button:hover {
   background-color: #0056b3;
 }
@@ -290,4 +282,162 @@
   color: #007aff;
   font-weight: 600;
   text-decoration: none;
+}
+
+/* --- [6] 혈당 상태 그래프 (메인 페이지용) --- */
+.status-graph-container {
+  width: 100%;
+  margin-top: 1.5rem;
+  position: relative;
+  padding-top: 30px; /* 화살표가 들어갈 공간 */
+}
+
+/* 3색 막대 그래프 */
+.status-bar {
+  display: flex;
+  width: 100%;
+  height: 20px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #eee;
+}
+
+.bar-segment {
+  height: 100%;
+}
+.bar-segment.normal {
+  background-color: #4caf50; /* 초록 */
+}
+.bar-segment.pre-diabetic {
+  background-color: #ffc107; /* 노랑 */
+}
+.bar-segment.danger {
+  background-color: #f44336; /* 빨강 */
+}
+
+/* 화살표 표시기 */
+.status-indicator {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%); /* 화살표 중앙 정렬 */
+  transition: left 0.5s ease-out;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.indicator-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.indicator-arrow {
+  font-size: 1.2rem;
+  color: #333;
+  line-height: 0.8;
+}
+
+/* 그래프 아래 레이블 (140, 200) */
+.status-labels {
+  position: relative;
+  width: 100%;
+  height: 20px;
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.status-labels span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+
+/* 최종 상태 텍스트 (정상, 당뇨 전단계...) */
+.status-text {
+  margin-top: 1.5rem;
+  font-size: 1.3rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.status-text.normal {
+  color: #4caf50;
+}
+.status-text.pre-diabetic {
+  color: #e6a100;
+}
+.status-text.danger {
+  color: #f44336;
+}
+
+
+/* --- [7] 마이페이지 (꺾은선 그래프) --- */
+.chart-wrapper {
+  width: 100%;
+  /* recharts의 ResponsiveContainer가 이 높이를 기준으로 그래프를 그립니다. */
+  height: 300px; 
+  margin-top: 1.5rem;
+  margin-bottom: 2rem;
+  font-size: 12px; /* 그래프 내 텍스트 폰트 크기 */
+}
+
+.logout-button {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background-color: #f44336; /* 로그아웃 버튼은 빨간색으로 */
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 1rem;
+}
+
+.logout-button:hover {
+  background-color: #d32f2f;
+}
+
+/* --- [8] ID 중복 확인 버튼 (SignupPage) --- */
+
+/* ID 입력창과 버튼을 가로로 묶음 */
+.id-check-group {
+  display: flex;
+  gap: 0.5rem; /* 버튼과의 간격 */
+}
+
+.id-check-group input {
+  flex: 1; /* 입력창이 남은 공간 다 차지 */
+}
+
+/* 중복 확인 버튼 */
+.id-check-button {
+  padding: 0.8rem 1rem;
+  font-size: 0.9rem;
+  background-color: #555; /* 어두운 회색 */
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap; /* 버튼 글자 줄바꿈 방지 */
+  transition: background-color 0.2s;
+}
+
+.id-check-button:hover:not(:disabled) {
+  background-color: #333;
+}
+
+.id-check-button:disabled {
+  background-color: #aaa; /* 비활성화 시 */
+  cursor: not-allowed;
+}
+
+/* 중복 확인 메시지 (사용 가능/불가능) */
+.id-check-message {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  /* 폼 아래 간격이 너무 벌어지지 않도록 조정 */
+  margin-bottom: -1rem; 
 }
