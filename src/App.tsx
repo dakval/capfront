@@ -12,6 +12,51 @@ import {
 } from 'recharts';
 import './App.css'; // CSS 파일을 분리하여 import
 
+type NutrientVector = {
+  total_carb: number;  // g
+  sugar: number;       // g
+  protein: number;     // g
+  total_fat: number;   // g
+};
+
+// ★ Colab에서 구한 mean_corr 값으로 교체해야 하는 부분 ★
+// 예시는 내가 임의로 넣은 값이니까, 나중에 네 실제 값으로 바꿔줘!
+const CORR_WEIGHTS: NutrientVector = {
+  total_carb: 0.20,
+  sugar: 0.17,
+  protein: 0.13,
+  total_fat: 0.14,
+};
+
+const estimateGlucoseDeltaFromNutrients = (nutrients: NutrientVector): number => {
+  const norm: NutrientVector = {
+    total_carb: nutrients.total_carb / 10,
+    sugar: nutrients.sugar / 5,
+    protein: nutrients.protein / 5,
+    total_fat: nutrients.total_fat,
+  };
+
+  const score =
+    CORR_WEIGHTS.total_carb * norm.total_carb +
+    CORR_WEIGHTS.sugar * norm.sugar +
+    CORR_WEIGHTS.protein * norm.protein +
+    CORR_WEIGHTS.total_fat * norm.total_fat;
+
+  // -1~+1 정도 나오는 score를 -40~+40mg/dL 정도 변화량으로 스케일
+  const deltaGlucose = score * 40;
+  return deltaGlucose;
+};
+
+const estimatePostMealGlucose = (
+  nutrients: NutrientVector,
+  baseGlucose: number = 100,
+): number => {
+  const delta = estimateGlucoseDeltaFromNutrients(nutrients);
+  let predicted = baseGlucose + delta;
+  predicted = Math.max(80, Math.min(250, predicted)); // 80~250 사이로 자르기
+  return Math.round(predicted);
+};
+
 // TypeScript: 모달에 보여줄 페이지의 '상태'를 문자열로 정의
 type ModalState = 'hidden' | 'login' | 'signup' | 'my-page';
 
@@ -518,39 +563,83 @@ const MainPage = ({ onNewPrediction, isLoggedIn, history, userInfo }: {
     }
   };
 
+console.log("HANDLE SUBMIT START"); // 지워야 됨
   // 함수를 async로 변경
-  const handleSubmit = async () => {
-    setIsLoading(true);
-    setPredictedGlucose(null);
-    setGlucoseStatus(null); 
+const handleSubmit = async () => {
+    setIsLoading(true);
+    setPredictedGlucose(null);
+    setGlucoseStatus(null);
 
-    const apiFormData = new FormData();
-    apiFormData.append('gender', formData.gender);
-    apiFormData.append('height', formData.height);
-    apiFormData.append('weight', formData.weight);
-    apiFormData.append('birthYear', formData.birthYear);
-    // (참고: 텍스트/사진 데이터는 아래 분기에서 추가)
+    const apiFormData = new FormData();
+    apiFormData.append("gender", formData.gender);
+    apiFormData.append("height", formData.height);
+    apiFormData.append("weight", formData.weight);
+    apiFormData.append("birthYear", formData.birthYear);
 
-    try {
-      if (mealInputType === 'text') {
-        // --- [텍스트 입력] ---
-        // TODO: 백엔드 담당자에게 '텍스트'로 식단을 보냈을 때의
-        // API 주소와 형식을 받아야 합니다.
-        // (예: /api/gemini/textdb ?)
-        
-        console.error("아직 '직접 입력' API가 연동되지 않았습니다.");
-        alert("현재 '사진 첨부' 기능만 사용 가능합니다. (텍스트 API 연동 필요)");
+    try {
+      if (mealInputType === "text") {
 
-        // (임시로 가짜 데이터 로직을 남겨둡니다)
-        setTimeout(() => {
-          const randomGlucose = 150; // 가짜 데이터
-          setPredictedGlucose(randomGlucose);
-          setGlucoseStatus('pre-diabetic');
-          onNewPrediction({ date: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }), value: randomGlucose });
-          setIsLoading(false);
-        }, 500);
+        console.log("TEXT MODE START"); // 지워야 됨
+        // ----- 텍스트 입력: food/search + 상관계수 기반 예측 -----
+        if (!formData.mealText.trim()) {
+          alert("식단 내용을 먼저 입력해주세요.");
+          setIsLoading(false);
+          return;
+        }
 
-      } else if (mealFile) {
+        const searchResp = await fetch(
+          `https://capcoder-backendauth.onrender.com/api/food/search?keyword=${encodeURIComponent(
+            formData.mealText
+          )}`
+        );
+
+        if (!searchResp.ok) {
+          console.error("food/search 응답 오류:", searchResp.status);
+          alert("식단 검색에 실패했습니다. 잠시 후 다시 시도해주세요.");
+          setIsLoading(false);
+          return;
+        }
+
+        const foods = await searchResp.json();
+
+        if (!Array.isArray(foods) || foods.length === 0) {
+          alert("입력한 식단으로 검색된 음식이 없습니다.");
+          setIsLoading(false);
+          return;
+        }
+
+        const selectedFood = foods[0];
+        console.log("선택된 음식:", selectedFood);
+
+        const nutrients: NutrientVector = {
+          total_carb: Number(selectedFood.carbohydrates ?? 0),
+          sugar: Number(selectedFood.sugars ?? 0),
+          protein: Number(selectedFood.protein ?? 0),
+          total_fat: Number(selectedFood.fat ?? 0),
+        };
+
+        const predicted = estimatePostMealGlucose(nutrients, 100);
+        setPredictedGlucose(predicted);
+
+        console.log("PREDICTED:", predicted); // 지워야 됨
+
+        let currentStatus: GlucoseStatus = "normal";
+        if (predicted <= 140) currentStatus = "normal";
+        else if (predicted <= 199) currentStatus = "pre-diabetic";
+        else currentStatus = "danger";
+        setGlucoseStatus(currentStatus);
+
+        onNewPrediction({
+          date: new Date().toLocaleTimeString("ko-KR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          value: predicted,
+        });
+
+        setIsLoading(false);
+        return;
+      } else if (mealFile) {
         // --- [사진 첨부] ---
         apiFormData.append('mealPhoto', mealFile); // (백엔드에서 받을 key 이름 확인 필요)
         console.log('사진 예측 요청:', Object.fromEntries(apiFormData.entries()));
@@ -673,7 +762,7 @@ const MainPage = ({ onNewPrediction, isLoggedIn, history, userInfo }: {
         <h2>예상 식후 2시간 혈당</h2>
         {isLoading ? (
           <p className="result-placeholder">데이터를 분석 중입니다...</p>
-        ) : predictedGlucose && glucoseStatus ? (
+        ) : predictedGlucose !== null && glucoseStatus !== null ? (
           <>
             <p className="result-value">
               {predictedGlucose} <span>mg/dL</span>
