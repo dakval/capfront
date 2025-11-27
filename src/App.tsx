@@ -37,18 +37,39 @@ type GlucoseStatus = 'normal' | 'pre-diabetic' | 'danger';
 type SelectedFood = { name: string; nutrients: NutrientVector; portion: number; };
 
 // --- [3] 계산 로직 ---
-const CORR_WEIGHTS: NutrientVector = { total_carb: 0.20, sugar: 0.17, protein: 0.13, total_fat: 0.14 };
+const CORR_WEIGHTS: NutrientVector = { total_carb: 0.20, sugar: 0.17, protein: 0.13, total_fat: 0.11 };
 const estimateGlucoseDeltaFromNutrients = (nutrients: NutrientVector): number => {
   const norm = {
     total_carb: nutrients.total_carb / 10, sugar: nutrients.sugar / 5, protein: nutrients.protein / 5, total_fat: nutrients.total_fat,
   };
   const score = CORR_WEIGHTS.total_carb * norm.total_carb + CORR_WEIGHTS.sugar * norm.sugar + CORR_WEIGHTS.protein * norm.protein + CORR_WEIGHTS.total_fat * norm.total_fat;
-  return score * 40;
+  return score * 10;
 };
-const estimatePostMealGlucose = (nutrients: NutrientVector, baseGlucose: number = 100): number => {
+
+type UserFactors = {
+  age: number;
+  bmi: number;
+  gender: 'male' | 'female';
+};
+
+
+// hsy
+const estimatePostMealGlucose = (nutrients: NutrientVector, user: UserFactors): number => {
   const delta = estimateGlucoseDeltaFromNutrients(nutrients);
+
+  // gender: male=1, female=0
+  const genderBinary = user.gender === 'male' ? 1 : 0;
+
+  // 🔥 회귀식 기반 baseGlucose 계산
+  const baseGlucose =
+    80 +
+    (4.5885 * genderBinary) +
+    (0.0510 * user.age) +
+    (1.5263 * user.bmi);
+
+  // 최종 예측 혈당
   let predicted = baseGlucose + delta;
-  predicted = Math.max(80, Math.min(250, predicted));
+  predicted = Math.max(80, Math.min(250, predicted)); // clamp
   return Math.round(predicted);
 };
 
@@ -114,6 +135,7 @@ const LoginPage = ({ onPageChange, onLoginSuccess }: { onPageChange: (page: Moda
       const userInfoData = await userInfoResponse.json();
       const [year, month, day] = (userInfoData.birthDate || '---').split('-');
       
+      // hsy
       onLoginSuccess({
         name: userInfoData.name || '회원', gender: userInfoData.gender === 'female' ? 'female' : 'male',
         birthYear: year !== '-' ? year : '', birthMonth: month !== '-' ? month : '', birthDay: day !== '-' ? day : '',
@@ -472,6 +494,7 @@ const MainPage = ({ userInfo }: { userInfo: UserInfo | null; }) => {
     }
   }, [userInfo]);
 
+  // hsy
   const handleSearch = async () => {
       if (!searchText.trim()) return;
       try {
@@ -504,7 +527,25 @@ const MainPage = ({ userInfo }: { userInfo: UserInfo | null; }) => {
     }
   };
 
+  // hsy
+
   const handleSubmit = async () => {
+
+    const now = new Date();
+
+    const birthYearNum = Number(formData.birthYear);
+    const heightM = Number(formData.height) / 100;
+    const weightKg = Number(formData.weight);
+
+    const age = birthYearNum ? now.getFullYear() - birthYearNum : 40; // 기본값 40
+    const bmi = heightM > 0 ? weightKg / (heightM * heightM) : 23;    // 기본값 BMI 23
+
+    const userFactors: UserFactors = {
+      age,
+      bmi,
+      gender: formData.gender === 'female' ? 'female' : 'male',
+    };
+
     setIsLoading(true); setPredictedGlucose(null); setGlucoseStatus(null);
     try {
         let totalNutrients: NutrientVector = { total_carb: 0, sugar: 0, protein: 0, total_fat: 0 };
@@ -518,7 +559,7 @@ const MainPage = ({ userInfo }: { userInfo: UserInfo | null; }) => {
                 totalNutrients.protein += food.nutrients.protein * food.portion;
                 totalNutrients.total_fat += food.nutrients.total_fat * food.portion;
             });
-            resultValue = estimatePostMealGlucose(totalNutrients, 100);
+            resultValue = estimatePostMealGlucose(totalNutrients, userFactors);
 
         } else if (mealFile) {
             const apiFormData = new FormData(); apiFormData.append('image', mealFile);
@@ -529,7 +570,7 @@ const MainPage = ({ userInfo }: { userInfo: UserInfo | null; }) => {
                 if (typeof jsonData.predictedGlucose === 'number') resultValue = jsonData.predictedGlucose;
                 else {
                     const currentNutrients = { total_carb: parseFloat(jsonData.total_carb) || 0, sugar: parseFloat(jsonData.sugar) || 0, protein: parseFloat(jsonData.protein) || 0, total_fat: parseFloat(jsonData.total_fat) || 0 };
-                    resultValue = estimatePostMealGlucose(currentNutrients, 100);
+                    resultValue = estimatePostMealGlucose(currentNutrients, userFactors);
                 }
             }
         } else { alert("입력 확인 필요"); setIsLoading(false); return; }
@@ -546,10 +587,10 @@ const MainPage = ({ userInfo }: { userInfo: UserInfo | null; }) => {
   };
 
   // 날짜 데이터
-  const currentYear = new Date().getFullYear();
-  const YEARS = Array.from({ length: 100 }, (_, i) => currentYear - i);
-  const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
-  const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
+  // const currentYear = new Date().getFullYear();
+  // const YEARS = Array.from({ length: 100 }, (_, i) => currentYear - i);
+  // MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
+  // const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 
   return (
     <div className="main-container">
