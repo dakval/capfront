@@ -4,6 +4,8 @@ import {
 } from 'recharts';
 import './App.css';
 
+
+
 // --- [1] 아이콘 컴포넌트 ---
 const IconHome = ({ active }: { active: boolean }) => (
   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={active ? "#007aff" : "#C7C7CC"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -490,6 +492,8 @@ const MainPage = ({ userInfo }: { userInfo: UserInfo | null; }) => {
   const [predictedGlucose, setPredictedGlucose] = useState<number | null>(null);
   const [glucoseStatus, setGlucoseStatus] = useState<GlucoseStatus | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [mealSummary, setMealSummary] = useState<string>(''); // 음식 나열
+  const [hasDiabetes, setHasDiabetes] = useState(false); // 당뇨 구분
 
   useEffect(() => {
     if (userInfo) {
@@ -641,7 +645,7 @@ const MainPage = ({ userInfo }: { userInfo: UserInfo | null; }) => {
                 glucose: resultValue 
               })
             });
-
+            setMealSummary(`${mealDescription} 섭취 2시간 후 예측 혈당`);
             if (saveRes.ok) {
               alert(`✅ 저장 완료!\n날짜: ${fullDate}\n시간: ${displayTime}\n혈당: ${resultValue}`);
             } else {
@@ -698,10 +702,66 @@ const MainPage = ({ userInfo }: { userInfo: UserInfo | null; }) => {
         )}
       </div>
 
-      <button className="predict-button" onClick={handleSubmit} disabled={isLoading}>{isLoading ? '분석 중...' : '예측하기'}</button>
+      {/* <button className="predict-button" onClick={handleSubmit} disabled={isLoading}>{isLoading ? '분석 중...' : '예측하기'}</button> */}
+                  <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: '24px',
+        marginBottom: '8px',
+        padding: '0 4px',
+        gap: '12px',
+      }}
+    >
+      <label
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          fontSize: '16px',
+          fontWeight: 500,
+          color: '#333',
+          cursor: 'pointer',
+          marginLeft: '30px' 
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={hasDiabetes}
+          onChange={(e) => setHasDiabetes(e.target.checked)}
+          style={{ width: '18px', height: '18px' }}
+        />
+        <span>당뇨를 앓고 있습니다.</span>
+      </label>
 
+      <button
+        className="predict-button"
+        onClick={handleSubmit}
+        disabled={isLoading}
+        style={{
+          margin: 0,          // 👈 기존 .predict-button 의 margin-top 덮어쓰기
+          width: '150px',     // 한 줄에 들어가도록 고정
+          height: '48px',
+          fontSize: '16px',
+          alignSelf: 'center'
+        }}
+      >
+        {isLoading ? '분석 중...' : '예측하기'}
+      </button>
+    </div>
       <div className="result-container">
-        {predictedGlucose ? <GlucoseStatusGraph value={predictedGlucose} status={glucoseStatus} /> : <p className="result-placeholder">정보를 입력해주세요.</p>}
+        {predictedGlucose && (
+          <div style={{ textAlign: 'center', marginBottom: '20px', fontSize: '18px', fontWeight: '600' }}>
+            {mealSummary}
+          </div>
+        )}
+
+        {predictedGlucose ? (
+          <GlucoseStatusGraph value={predictedGlucose} status={glucoseStatus} />
+        ) : (
+          <p className="result-placeholder">정보를 입력해 주세요.</p>
+        )}
       </div>
       <div style={{height: '150px'}}></div>
     </div>
