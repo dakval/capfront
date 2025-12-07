@@ -29,7 +29,7 @@ const IconUser = ({ active }: { active: boolean }) => (
 );
 
 // --- [2] 타입 정의 ---
-type NutrientVector = { total_carb: number; sugar: number; protein: number; total_fat: number; };
+type NutrientVector = { calorie: number; total_carb: number; sugar: number; protein: number; total_fat: number; };
 type UserInfo = { name: string; gender: 'male' | 'female'; birthYear: string; birthMonth: string; birthDay: string; height: string; weight: string; };
 type PredictionRecord = { id: string; fullDate: string; displayTime: string; value: number; };
 type ModalState = 'hidden' | 'login' | 'signup';
@@ -39,14 +39,39 @@ type GlucoseStatus = 'normal' | 'pre-diabetic' | 'danger';
 type SelectedFood = { name: string; nutrients: NutrientVector; portion: number; };
 type TopMeal = { mealName: string; count: number; };
 
-// --- [3] 계산 로직 ---
-const CORR_WEIGHTS: NutrientVector = { total_carb: 0.20, sugar: 0.17, protein: 0.13, total_fat: 0.11 };
-const estimateGlucoseDeltaFromNutrients = (nutrients: NutrientVector): number => {
-  const norm = {
-    total_carb: nutrients.total_carb / 10, sugar: nutrients.sugar / 5, protein: nutrients.protein / 5, total_fat: nutrients.total_fat,
-  };
-  const score = CORR_WEIGHTS.total_carb * norm.total_carb + CORR_WEIGHTS.sugar * norm.sugar + CORR_WEIGHTS.protein * norm.protein + CORR_WEIGHTS.total_fat * norm.total_fat;
-  return score * 10;
+
+const MODEL_NO = {
+  baseline: {
+    intercept: 107.45,
+    gender: -0.148,
+    age: 0.002,
+    bmi: -0.004,
+  },
+  meal: {
+    intercept: 17.457,
+    calorie: -0.011,
+    total_carb: 0.23,
+    sugar: -0.139,
+    protein: 0.071,
+    total_fat: -0.008,
+  }
+};
+
+const MODEL_YES = {
+  baseline: {
+    intercept: 163.794,
+    gender: 0.352,
+    age: 0.091,
+    bmi: -0.081,
+  },
+  meal: {
+    intercept: 17.457,
+    calorie: -0.011,
+    total_carb: 0.23,
+    sugar: -0.139,
+    protein: 0.071,
+    total_fat: -0.008,
+  }
 };
 
 type UserFactors = {
@@ -55,29 +80,77 @@ type UserFactors = {
   gender: 'male' | 'female';
 };
 
-const estimatePostMealGlucose = (nutrients: NutrientVector, user: UserFactors): number => {
-  const delta = estimateGlucoseDeltaFromNutrients(nutrients);
-  const genderBinary = user.gender === 'male' ? 1 : 0;
-  const baseGlucose = 80 + (4.5885 * genderBinary) + (0.0510 * user.age) + (1.5263 * user.bmi);
-  let predicted = baseGlucose + delta;
-  predicted = Math.max(80, Math.min(250, predicted)); 
+const hybridPredict = (
+  nutrients: NutrientVector,
+  user: UserFactors,
+  hasDiabetes: boolean
+): number => {
+
+  const M = hasDiabetes ? MODEL_YES : MODEL_NO;
+  const genderBinary = user.gender === "male" ? 1 : 0;
+
+  const baseline =
+    M.baseline.intercept +
+    M.baseline.gender * genderBinary +
+    M.baseline.age * user.age +
+    M.baseline.bmi * user.bmi;
+
+  const delta =
+    M.meal.intercept +
+    M.meal.calorie * nutrients.calorie +
+    M.meal.total_carb * nutrients.total_carb +
+    M.meal.sugar * nutrients.sugar +
+    M.meal.protein * nutrients.protein +
+    M.meal.total_fat * nutrients.total_fat;
+
+  let predicted = baseline + delta;
+
+  predicted = Math.max(80, Math.min(250, predicted));
+
   return Math.round(predicted);
 };
 
 // --- [4] 컴포넌트들 ---
 
-// [혈당 상태 그래프]
 const GlucoseStatusGraph = ({ value, status }: { value: number; status: GlucoseStatus | null }) => {
   if (!status) return null;
+
   const getIndicatorPosition = () => {
-    const percentage = ((Math.max(80, Math.min(value, 250)) - 80) / (250 - 80)) * 100;
-    return `max(0%, min(98%, ${percentage}%))`;
-  };
+  const min = 80;
+  const max = 250;
+  const v = Math.max(min, Math.min(value, max));
+
+  const greenRange = 140 - 80;  
+  const yellowRange = 200 - 140; 
+  const redRange = 250 - 200;   
+
+  const greenWidth = 35.3;
+  const yellowWidth = 34.7;
+  const redWidth = 30;
+
+  if (v <= 140) {
+    return ((v - 80) / greenRange) * greenWidth + "%";
+  }
+
+  if (v <= 200) {
+    return (
+      greenWidth +
+      ((v - 140) / yellowRange) * yellowWidth
+    ) + "%";
+  }
+
+  return (
+    greenWidth + yellowWidth +
+    ((v - 200) / redRange) * redWidth
+  ) + "%";
+};
+
   const statusInfo = {
     normal: { text: '정상', className: 'normal', emoji: '😀', color: '#34C759' },
     'pre-diabetic': { text: '주의', className: 'pre-diabetic', emoji: '😐', color: '#FF9500' },
     danger: { text: '위험', className: 'danger', emoji: '😡', color: '#FF3B30' },
   };
+
   const current = statusInfo[status];
 
   return (
@@ -86,19 +159,30 @@ const GlucoseStatusGraph = ({ value, status }: { value: number; status: GlucoseS
         <div style={{ fontSize: '4rem', marginBottom: '5px' }}>{current.emoji}</div>
         <h2 style={{ color: current.color, margin: 0, fontSize: '28px' }}>{current.text}</h2>
       </div>
+
       <div className="graph-wrapper">
+        {/* ▼ 인디케이터 */}
         <div className="status-indicator" style={{ left: getIndicatorPosition() }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100px' }}> 
-            <div className="indicator-value" style={{ fontSize: '20px', fontWeight: '800', marginBottom: '2px' }}>{value}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100px' }}>
+            <div className="indicator-value" style={{ fontSize: '20px', fontWeight: '800', marginBottom: '2px' }}>
+              {value}
+            </div>
             <div className="indicator-arrow">▼</div>
           </div>
         </div>
+
+        {/* 색상 구간 */}
         <div className="status-bar">
           <div className="bar-segment normal" style={{ width: '35.3%' }}></div>
           <div className="bar-segment pre-diabetic" style={{ width: '34.7%' }}></div>
           <div className="bar-segment danger" style={{ width: '30%' }}></div>
         </div>
-        <div className="status-labels"><span style={{ left: '35.3%' }}>140</span><span style={{ left: '70%' }}>200</span></div>
+
+        {/* 구간 레이블 */}
+        <div className="status-labels">
+          <span style={{ left: '35.3%' }}>140</span>
+          <span style={{ left: '70%' }}>200</span>
+        </div>
       </div>
     </div>
   );
@@ -528,6 +612,7 @@ const MainPage = ({ userInfo }: { userInfo: UserInfo | null; }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [mealSummary, setMealSummary] = useState<string>(''); // 음식 나열
   const [hasDiabetes, setHasDiabetes] = useState(false); // 당뇨 구분
+  
 
   useEffect(() => {
     if (userInfo) {
@@ -546,7 +631,7 @@ const MainPage = ({ userInfo }: { userInfo: UserInfo | null; }) => {
   const addFood = (food: any) => {
       const newFood: SelectedFood = {
           name: food.foodName,
-          nutrients: { total_carb: Number(food.carbohydrates || 0), sugar: Number(food.sugars || 0), protein: Number(food.protein || 0), total_fat: Number(food.fat || 0) },
+          nutrients: { calorie: Number(food.energy || 0), total_carb: Number(food.carbohydrates || 0), sugar: Number(food.sugars || 0), protein: Number(food.protein || 0), total_fat: Number(food.fat || 0) },
           portion: 1
       };
       setSelectedFoods([...selectedFoods, newFood]); setSearchResults([]); setSearchText('');
@@ -588,7 +673,7 @@ const MainPage = ({ userInfo }: { userInfo: UserInfo | null; }) => {
 
     try {
       let resultValue = 0;
-      let totalNutrients: NutrientVector = { total_carb: 0, sugar: 0, protein: 0, total_fat: 0 };
+      let totalNutrients: NutrientVector = { calorie: 0, total_carb: 0, sugar: 0, protein: 0, total_fat: 0 };
       let mealDescription = '';
 
       if (mealInputType === 'text') {
@@ -598,6 +683,7 @@ const MainPage = ({ userInfo }: { userInfo: UserInfo | null; }) => {
           return; 
         }
         selectedFoods.forEach(food => {
+          totalNutrients.calorie += food.nutrients.calorie * food.portion;
           totalNutrients.total_carb += food.nutrients.total_carb * food.portion;
           totalNutrients.sugar += food.nutrients.sugar * food.portion;
           totalNutrients.protein += food.nutrients.protein * food.portion;
@@ -608,7 +694,7 @@ const MainPage = ({ userInfo }: { userInfo: UserInfo | null; }) => {
         mealDescription = selectedFoods
         .map(food => `${food.name}${food.portion && food.portion !== 1 ? ` x${food.portion}` : ''}`)
         .join(', ');
-        resultValue = estimatePostMealGlucose(totalNutrients, userFactors);
+        resultValue = hybridPredict(totalNutrients, userFactors, hasDiabetes);
 
       } else if (mealFile) {
         const apiFormData = new FormData();
@@ -633,12 +719,13 @@ const MainPage = ({ userInfo }: { userInfo: UserInfo | null; }) => {
                 resultValue = jsonData.predictedGlucose;
             } else {
                 const currentNutrients = { 
+                    calorie: parseFloat(jsonData.calorie) || 0, 
                     total_carb: parseFloat(jsonData.total_carb) || 0, 
                     sugar: parseFloat(jsonData.sugar) || 0, 
                     protein: parseFloat(jsonData.protein) || 0, 
                     total_fat: parseFloat(jsonData.total_fat) || 0 
                 };
-                resultValue = estimatePostMealGlucose(currentNutrients, userFactors);
+                resultValue = hybridPredict(currentNutrients, userFactors, hasDiabetes);
             }
         } else {
             throw new Error("이미지 분석 실패");
