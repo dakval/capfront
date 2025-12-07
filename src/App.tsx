@@ -4,8 +4,6 @@ import {
 } from 'recharts';
 import './App.css';
 
-
-
 // --- [1] 아이콘 컴포넌트 ---
 const IconHome = ({ active }: { active: boolean }) => (
   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={active ? "#007aff" : "#C7C7CC"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -39,39 +37,15 @@ type GlucoseStatus = 'normal' | 'pre-diabetic' | 'danger';
 type SelectedFood = { name: string; nutrients: NutrientVector; portion: number; };
 type TopMeal = { mealName: string; count: number; };
 
-
+// --- [3] 계산 로직 ---
 const MODEL_NO = {
-  baseline: {
-    intercept: 107.45,
-    gender: -0.148,
-    age: 0.002,
-    bmi: -0.004,
-  },
-  meal: {
-    intercept: 17.457,
-    calorie: -0.011,
-    total_carb: 0.23,
-    sugar: -0.139,
-    protein: 0.071,
-    total_fat: -0.008,
-  }
+  baseline: { intercept: 107.45, gender: -0.148, age: 0.002, bmi: -0.004 },
+  meal: { intercept: 17.457, calorie: -0.011, total_carb: 0.23, sugar: -0.139, protein: 0.071, total_fat: -0.008 }
 };
 
 const MODEL_YES = {
-  baseline: {
-    intercept: 163.794,
-    gender: 0.352,
-    age: 0.091,
-    bmi: -0.081,
-  },
-  meal: {
-    intercept: 17.457,
-    calorie: -0.011,
-    total_carb: 0.23,
-    sugar: -0.139,
-    protein: 0.071,
-    total_fat: -0.008,
-  }
+  baseline: { intercept: 163.794, gender: 0.352, age: 0.091, bmi: -0.081 },
+  meal: { intercept: 17.457, calorie: -0.011, total_carb: 0.23, sugar: -0.139, protein: 0.071, total_fat: -0.008 }
 };
 
 type UserFactors = {
@@ -80,33 +54,15 @@ type UserFactors = {
   gender: 'male' | 'female';
 };
 
-const hybridPredict = (
-  nutrients: NutrientVector,
-  user: UserFactors,
-  hasDiabetes: boolean
-): number => {
-
+const hybridPredict = (nutrients: NutrientVector, user: UserFactors, hasDiabetes: boolean): number => {
   const M = hasDiabetes ? MODEL_YES : MODEL_NO;
   const genderBinary = user.gender === "male" ? 1 : 0;
 
-  const baseline =
-    M.baseline.intercept +
-    M.baseline.gender * genderBinary +
-    M.baseline.age * user.age +
-    M.baseline.bmi * user.bmi;
-
-  const delta =
-    M.meal.intercept +
-    M.meal.calorie * nutrients.calorie +
-    M.meal.total_carb * nutrients.total_carb +
-    M.meal.sugar * nutrients.sugar +
-    M.meal.protein * nutrients.protein +
-    M.meal.total_fat * nutrients.total_fat;
+  const baseline = M.baseline.intercept + M.baseline.gender * genderBinary + M.baseline.age * user.age + M.baseline.bmi * user.bmi;
+  const delta = M.meal.intercept + M.meal.calorie * nutrients.calorie + M.meal.total_carb * nutrients.total_carb + M.meal.sugar * nutrients.sugar + M.meal.protein * nutrients.protein + M.meal.total_fat * nutrients.total_fat;
 
   let predicted = baseline + delta;
-
   predicted = Math.max(80, Math.min(250, predicted));
-
   return Math.round(predicted);
 };
 
@@ -116,41 +72,21 @@ const GlucoseStatusGraph = ({ value, status }: { value: number; status: GlucoseS
   if (!status) return null;
 
   const getIndicatorPosition = () => {
-  const min = 80;
-  const max = 250;
-  const v = Math.max(min, Math.min(value, max));
+    const min = 80; const max = 250;
+    const v = Math.max(min, Math.min(value, max));
+    const greenRange = 140 - 80; const yellowRange = 200 - 140; const redRange = 250 - 200;
+    const greenWidth = 35.3; const yellowWidth = 34.7; const redWidth = 30;
 
-  const greenRange = 140 - 80;  
-  const yellowRange = 200 - 140; 
-  const redRange = 250 - 200;   
-
-  const greenWidth = 35.3;
-  const yellowWidth = 34.7;
-  const redWidth = 30;
-
-  if (v <= 140) {
-    return ((v - 80) / greenRange) * greenWidth + "%";
-  }
-
-  if (v <= 200) {
-    return (
-      greenWidth +
-      ((v - 140) / yellowRange) * yellowWidth
-    ) + "%";
-  }
-
-  return (
-    greenWidth + yellowWidth +
-    ((v - 200) / redRange) * redWidth
-  ) + "%";
-};
+    if (v <= 140) return ((v - 80) / greenRange) * greenWidth + "%";
+    if (v <= 200) return (greenWidth + ((v - 140) / yellowRange) * yellowWidth) + "%";
+    return (greenWidth + yellowWidth + ((v - 200) / redRange) * redWidth) + "%";
+  };
 
   const statusInfo = {
     normal: { text: '정상', className: 'normal', emoji: '😀', color: '#34C759' },
     'pre-diabetic': { text: '주의', className: 'pre-diabetic', emoji: '😐', color: '#FF9500' },
     danger: { text: '위험', className: 'danger', emoji: '😡', color: '#FF3B30' },
   };
-
   const current = statusInfo[status];
 
   return (
@@ -159,30 +95,19 @@ const GlucoseStatusGraph = ({ value, status }: { value: number; status: GlucoseS
         <div style={{ fontSize: '4rem', marginBottom: '5px' }}>{current.emoji}</div>
         <h2 style={{ color: current.color, margin: 0, fontSize: '28px' }}>{current.text}</h2>
       </div>
-
       <div className="graph-wrapper">
-        {/* ▼ 인디케이터 */}
         <div className="status-indicator" style={{ left: getIndicatorPosition() }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100px' }}>
-            <div className="indicator-value" style={{ fontSize: '20px', fontWeight: '800', marginBottom: '2px' }}>
-              {value}
-            </div>
+            <div className="indicator-value" style={{ fontSize: '20px', fontWeight: '800', marginBottom: '2px' }}>{value}</div>
             <div className="indicator-arrow">▼</div>
           </div>
         </div>
-
-        {/* 색상 구간 */}
         <div className="status-bar">
           <div className="bar-segment normal" style={{ width: '35.3%' }}></div>
           <div className="bar-segment pre-diabetic" style={{ width: '34.7%' }}></div>
           <div className="bar-segment danger" style={{ width: '30%' }}></div>
         </div>
-
-        {/* 구간 레이블 */}
-        <div className="status-labels">
-          <span style={{ left: '35.3%' }}>140</span>
-          <span style={{ left: '70%' }}>200</span>
-        </div>
+        <div className="status-labels"><span style={{ left: '35.3%' }}>140</span><span style={{ left: '70%' }}>200</span></div>
       </div>
     </div>
   );
@@ -302,50 +227,56 @@ const SignupPage = ({ onPageChange }: { onPageChange: (page: ModalState) => void
   );
 };
 
-// [마이페이지]
+// [마이페이지] - AI 에러 처리 강화
 const MyPage = ({ userInfo, onLogout, onUpdateUser }: { userInfo: UserInfo | null, onLogout: () => void, onUpdateUser: (updated: UserInfo) => void }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<UserInfo | null>(null);
   const [recommendation, setRecommendation] = useState<string>("분석 중...");
-  // [수정 1] 상위 3개 음식 저장을 위한 state 추가
   const [topMeals, setTopMeals] = useState<TopMeal[]>([]);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
+  // 1. AI 추천 가져오기
+  const fetchRecommendation = async () => {
+    setIsAiLoading(true);
+    setRecommendation("분석 중...");
+    try {
+      const token = localStorage.getItem('authToken');
+      const res = await fetch('https://capcoder-backendauth.onrender.com/api/gemini/recommend', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.text();
+      
+      if (res.ok) {
+        setRecommendation(data);
+      } else if (res.status === 429) {
+        setRecommendation("⚠️ AI 사용량이 초과되었습니다. 잠시 후 다시 시도해주세요. (429 Too Many Requests)");
+      } else {
+        setRecommendation(`분석 실패 (${res.status}): ${data}`);
+      }
+    } catch (e) { setRecommendation("서버 연결 실패"); }
+    setIsAiLoading(false);
+  };
+
+  // 2. Top 3 음식 가져오기
+  const fetchTopMeals = async () => {
+    try {
+        const token = localStorage.getItem('authToken');
+        const res = await fetch('https://capcoder-backendauth.onrender.com/api/my/topKMeal', {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            setTopMeals(data);
+        }
+    } catch (e) { console.error("Top 3 메뉴 로드 실패", e); }
+  };
 
   useEffect(() => {
     if (userInfo) {
       setEditForm(userInfo);
-      
-      const token = localStorage.getItem('authToken');
-
-      // 1. AI 추천 가져오기
-      const fetchRecommendation = async () => {
-        try {
-          const res = await fetch('https://capcoder-backendauth.onrender.com/api/gemini/recommend', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (res.ok) {
-            const data = await res.text();
-            setRecommendation(data);
-          } else setRecommendation("아직 식단 데이터가 부족해요.");
-        } catch (e) { setRecommendation("추천을 불러오지 못했습니다."); }
-      };
-
-      // [수정 2] Top 3 음식 가져오기 API 호출
-      const fetchTopMeals = async () => {
-        try {
-            const res = await fetch('https://capcoder-backendauth.onrender.com/api/my/topKMeal', {
-                method: 'GET',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                // 데이터가 있으면 state 업데이트
-                setTopMeals(data);
-            }
-        } catch (e) { console.error("Top 3 메뉴 로드 실패", e); }
-      };
-
       fetchRecommendation();
-      fetchTopMeals(); // 함수 실행
+      fetchTopMeals();
     }
   }, [userInfo]);
 
@@ -403,12 +334,14 @@ const MyPage = ({ userInfo, onLogout, onUpdateUser }: { userInfo: UserInfo | nul
         </div>
       ) : (
         <>
-          <div className="recommend-card" style={{background: '#e3f2fd', padding: '20px', borderRadius: '20px', marginBottom: '20px'}}>
-             <h3 style={{fontSize: '1.1rem', margin: '0 0 10px 0', color: '#007aff'}}>🤖 AI 식단 조언</h3>
-             <p style={{lineHeight: '1.6', fontSize: '0.95rem', color: '#333'}}>{recommendation}</p>
+          <div className="recommend-card" style={{background: '#e3f2fd', padding: '20px', borderRadius: '20px', marginBottom: '20px', position:'relative'}}>
+             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px'}}>
+                <h3 style={{fontSize: '1.1rem', margin: '0', color: '#007aff'}}>🤖 AI 식단 조언</h3>
+                <button onClick={fetchRecommendation} disabled={isAiLoading} style={{border:'none', background:'transparent', cursor:'pointer', fontSize:'1.2rem'}}>🔄</button>
+             </div>
+             <p style={{lineHeight: '1.6', fontSize: '0.95rem', color: '#333', whiteSpace: 'pre-wrap'}}>{recommendation}</p>
           </div>
           
-          {/* [수정 3] 실제 데이터로 렌더링 변경 */}
           <div className="stats-card" style={{background: '#f9f9f9', padding: '20px', borderRadius: '20px', marginBottom: '30px'}}>
             <h3 style={{fontSize: '1.1rem', margin: '0 0 15px 0'}}>🏆 이번 달 최애 메뉴</h3>
             <ol style={{paddingLeft: '20px', margin: 0, lineHeight: '1.8', color: '#555'}}>
@@ -433,17 +366,33 @@ const MyPage = ({ userInfo, onLogout, onUpdateUser }: { userInfo: UserInfo | nul
   );
 };
 
-// 캘린더 페이지 (애플 스타일 + 백엔드 연동 + 삭제 기능)
-const CalendarPage = () => {
+// [캘린더 페이지] - +11시간 보정 (사용자 요청: +9KST + 2hours prediction)
+const CalendarPage = ({ initialDate }: { initialDate?: string | null }) => {
+  const [viewDate, setViewDate] = useState(() => {
+      if (initialDate) {
+          const [y, m] = initialDate.split('-');
+          return new Date(Number(y), Number(m) - 1, 1);
+      }
+      return new Date();
+  });
+  
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+      if (initialDate) return initialDate;
+      const today = new Date();
+      return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  });
+
   const [history, setHistory] = useState<PredictionRecord[]>([]);
-  const [viewDate, setViewDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<string>('');
 
   useEffect(() => {
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    setSelectedDate(todayStr);
-  }, []);
+    if (initialDate) {
+        console.log(`📅 [캘린더] 예측 날짜 수신: ${initialDate}`);
+        setSelectedDate(initialDate);
+        const [y, m] = initialDate.split('-');
+        const targetDate = new Date(Number(y), Number(m) - 1, 1);
+        setViewDate(targetDate);
+    }
+  }, [initialDate]);
 
   useEffect(() => {
     const fetchLog = async () => {
@@ -453,17 +402,23 @@ const CalendarPage = () => {
       const year = viewDate.getFullYear();
       const month = viewDate.getMonth() + 1;
 
+      console.log(`🚀 [캘린더] 데이터 요청: ${year}년 ${month}월`);
+
       try {
-        const res = await fetch(`https://capcoder-backendauth.onrender.com/api/my/glucoseLog.do?year=${year}&month=${month}`, {
+        const res = await fetch(`https://capcoder-backendauth.onrender.com/api/my/glucoseLog.do?year=${year}&month=${month}&_t=${Date.now()}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
         if (res.ok) {
           const data = await res.json();
-          // [수정] 백엔드 데이터(logId, glucose, logTime)를 프론트 형식으로 변환
+          console.log(`✅ [캘린더] 데이터 수신: ${data.length}건`);
+          
           const formatted = data.map((item: any) => {
-             // logTime: "2025-11-24T21:10:00" -> 날짜와 시간 분리
+             // [★ 핵심 수정] 사용자 요청대로 +11시간 처리 (KST +9h + 예측시간 +2h ?)
+             // 사용자 의도: "현재에서 +2시간 후 혈당을 보여주는 거니까 +11시간 해야 돼"
              const dateObj = new Date(item.logTime);
+             dateObj.setHours(dateObj.getHours() + 11); 
+
              const y = dateObj.getFullYear();
              const m = String(dateObj.getMonth() + 1).padStart(2, '0');
              const d = String(dateObj.getDate()).padStart(2, '0');
@@ -474,15 +429,17 @@ const CalendarPage = () => {
              const displayTime = `${hh}:${mm}`;
 
              return {
-                id: item.logId,  // UUID 문자열 그대로 사용
-                fullDate: fullDate,
-                displayTime: displayTime,
-                value: item.glucose
+               id: item.logId,
+               fullDate: fullDate,
+               displayTime: displayTime,
+               value: item.glucose
              };
           });
           setHistory(formatted);
+        } else {
+            console.error("❌ 서버 응답 실패");
         }
-      } catch (e) { console.error("로그 불러오기 실패", e); }
+      } catch (e) { console.error("❌ 네트워크 오류", e); }
     };
     fetchLog();
   }, [viewDate]);
@@ -497,14 +454,12 @@ const CalendarPage = () => {
     
     const token = localStorage.getItem('authToken');
     try {
-        // [수정] 실제 삭제 API 호출
         const res = await fetch(`https://capcoder-backendauth.onrender.com/api/my/delete.do?logId=${id}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
         if (res.ok) {
-            // 화면에서 제거
             setHistory(prev => prev.filter(item => item.id !== id));
         } else {
             alert("삭제 실패");
@@ -598,8 +553,8 @@ const CalendarPage = () => {
   );
 };
 
-// [메인 페이지]
-const MainPage = ({ userInfo }: { userInfo: UserInfo | null; }) => {
+// [메인 페이지] - 당뇨 체크박스 & hybridPredict & T 포함 날짜 전송
+const MainPage = ({ userInfo, onPredictComplete }: { userInfo: UserInfo | null; onPredictComplete: (date: string) => void; }) => {
   const [formData, setFormData] = useState({ gender: 'male', height: '', weight: '', birthYear: '', birthMonth: '', birthDay: '' });
   const [mealInputType, setMealInputType] = useState<MealInputType>('text');
   const [mealFile, setMealFile] = useState<File | null>(null);
@@ -612,7 +567,6 @@ const MainPage = ({ userInfo }: { userInfo: UserInfo | null; }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [mealSummary, setMealSummary] = useState<string>(''); // 음식 나열
   const [hasDiabetes, setHasDiabetes] = useState(false); // 당뇨 구분
-  
 
   useEffect(() => {
     if (userInfo) {
@@ -690,7 +644,6 @@ const MainPage = ({ userInfo }: { userInfo: UserInfo | null; }) => {
           totalNutrients.total_fat += food.nutrients.total_fat * food.portion;
         });
 
-        // 텍스트 입력일 때 식단 설명: 선택한 음식 이름들 조합
         mealDescription = selectedFoods
         .map(food => `${food.name}${food.portion && food.portion !== 1 ? ` x${food.portion}` : ''}`)
         .join(', ');
@@ -705,15 +658,12 @@ const MainPage = ({ userInfo }: { userInfo: UserInfo | null; }) => {
             const raw = await res.text();
             const jsonData = JSON.parse(raw.replace(/```json/g, "").replace(/```/g, "").trim());
             
-            // 이미지 분석 결과에서 식단 설명이 오면 사용
             const items = Array.isArray(jsonData) ? jsonData : [jsonData];
             mealDescription = items
               .map(item => (item.meal_description || item.mealDescription || '').trim())
               .filter(desc => desc.length > 0)
               .join(', ');
-            if(!mealDescription) {
-              mealDescription = '이미지 기반 식단'; // fallback
-            }
+            if(!mealDescription) mealDescription = '이미지 기반 식단';
 
             if (typeof jsonData.predictedGlucose === 'number') {
                 resultValue = jsonData.predictedGlucose;
@@ -752,7 +702,14 @@ const MainPage = ({ userInfo }: { userInfo: UserInfo | null; }) => {
       if (resultValue > 0) {
         const futureDate = new Date(now.getTime() + (2 * 60 * 60 * 1000));
         const fullDate = `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}-${String(futureDate.getDate()).padStart(2, '0')}`;
-        const displayTime = futureDate.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+        
+        const hh = String(futureDate.getHours()).padStart(2, '0');
+        const mm = String(futureDate.getMinutes()).padStart(2, '0');
+        const ss = String(futureDate.getSeconds()).padStart(2, '0');
+        const displayTime = `${hh}:${mm}:${ss}`; 
+        
+        // [서버가 좋아하는 형식] YYYY-MM-DDTHH:mm:ss
+        const logTime = `${fullDate}T${displayTime}`;
 
         try {
             const saveRes = await fetch('https://capcoder-backendauth.onrender.com/api/my/saveGlucose.do', {
@@ -762,20 +719,27 @@ const MainPage = ({ userInfo }: { userInfo: UserInfo | null; }) => {
                 'Authorization': `Bearer ${token}`
               },
               body: JSON.stringify({
-                mealDescription, 
+                logTime: logTime,        
+                date: fullDate,          
+                time: displayTime,       
+                mealDescription: mealDescription,
                 glucose: resultValue 
               })
             });
+            
             setMealSummary(`${mealDescription} 섭취 2시간 후 예측 혈당`);
+
             if (saveRes.ok) {
-              alert(`✅ 저장 완료!\n날짜: ${fullDate}\n시간: ${displayTime}\n혈당: ${resultValue}`);
+              if(window.confirm(`✅ 예측 완료!\n2시간 뒤(${hh}:${mm}) 혈당: ${resultValue}\n\n캘린더에서 확인할까요?`)) {
+                  setTimeout(() => {
+                      onPredictComplete(fullDate); 
+                  }, 500); 
+              }
             } else {
               alert("❌ 저장 실패: 서버에서 오류가 발생했습니다.");
-              console.error("저장 실패 상태코드:", saveRes.status);
             }
         } catch (fetchError) {
             alert("❌ 저장 중 에러 발생: 인터넷 연결을 확인하세요.");
-            console.error(fetchError);
         }
       }
 
@@ -810,7 +774,7 @@ const MainPage = ({ userInfo }: { userInfo: UserInfo | null; }) => {
                             <div style={{marginTop:'5px', display:'flex', gap:'5px'}}>
                                 {[0.25, 0.5, 1, 2].map(p => (
                                     <button key={p} onClick={() => changePortion(idx, p)} style={{flex: 1, padding: '5px', border: '1px solid #ddd', background: food.portion === p ? '#007aff' : 'white', color: food.portion === p ? 'white' : '#333', borderRadius: '4px', fontSize: '0.8rem'}}>
-                                        {p === 0.25 ? '1/4인분' : p === 0.5 ? '1/2인분' : p + '인분'}
+                                            {p === 0.25 ? '1/4인분' : p === 0.5 ? '1/2인분' : p + '인분'}
                                     </button>
                                 ))}
                             </div>
@@ -823,54 +787,17 @@ const MainPage = ({ userInfo }: { userInfo: UserInfo | null; }) => {
         )}
       </div>
 
-      {/* <button className="predict-button" onClick={handleSubmit} disabled={isLoading}>{isLoading ? '분석 중...' : '예측하기'}</button> */}
-                  <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: '24px',
-        marginBottom: '8px',
-        padding: '0 4px',
-        gap: '12px',
-      }}
-    >
-      <label
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          fontSize: '16px',
-          fontWeight: 500,
-          color: '#333',
-          cursor: 'pointer',
-          marginLeft: '30px' 
-        }}
-      >
-        <input
-          type="checkbox"
-          checked={hasDiabetes}
-          onChange={(e) => setHasDiabetes(e.target.checked)}
-          style={{ width: '18px', height: '18px' }}
-        />
-        <span>당뇨를 앓고 있습니다.</span>
-      </label>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', marginBottom: '8px', padding: '0 4px', gap: '12px' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px', fontWeight: 500, color: '#333', cursor: 'pointer', marginLeft: '30px' }}>
+          <input type="checkbox" checked={hasDiabetes} onChange={(e) => setHasDiabetes(e.target.checked)} style={{ width: '18px', height: '18px' }} />
+          <span>당뇨를 앓고 있습니다.</span>
+        </label>
 
-      <button
-        className="predict-button"
-        onClick={handleSubmit}
-        disabled={isLoading}
-        style={{
-          margin: 0,          // 👈 기존 .predict-button 의 margin-top 덮어쓰기
-          width: '150px',     // 한 줄에 들어가도록 고정
-          height: '48px',
-          fontSize: '16px',
-          alignSelf: 'center'
-        }}
-      >
-        {isLoading ? '분석 중...' : '예측하기'}
-      </button>
-    </div>
+        <button className="predict-button" onClick={handleSubmit} disabled={isLoading} style={{ margin: 0, width: '150px', height: '48px', fontSize: '16px', alignSelf: 'center' }}>
+          {isLoading ? '분석 중...' : '예측하기'}
+        </button>
+      </div>
+
       <div className="result-container">
         {predictedGlucose && (
           <div style={{ textAlign: 'center', marginBottom: '20px', fontSize: '18px', fontWeight: '600' }}>
@@ -917,6 +844,8 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUserInfo, setCurrentUserInfo] = useState<UserInfo | null>(null);
   const [currentTab, setCurrentTab] = useState<TabState>('main');
+  
+  const [calendarTargetDate, setCalendarTargetDate] = useState<string | null>(null);
 
   const handleLoginSuccess = (userInfo: UserInfo) => {
     setIsLoggedIn(true); setModalPage('hidden'); setCurrentUserInfo(userInfo);
@@ -927,6 +856,11 @@ function App() {
 
   const handleUserInfoUpdate = (updatedUser: UserInfo) => {
     setCurrentUserInfo(updatedUser);
+  };
+
+  const handlePredictSuccess = (date: string) => {
+      setCalendarTargetDate(date); 
+      setCurrentTab('calendar');
   };
 
   useEffect(() => {
@@ -949,9 +883,10 @@ function App() {
   return (
     <div className="App">
       <div className="content-area">
-        {/* [수정] 메인 페이지도 로그인 체크 */}
-        {currentTab === 'main' && (isLoggedIn ? <MainPage userInfo={currentUserInfo} /> : <LoginRequiredView onLoginClick={() => setModalPage('login')} />)}
-        {currentTab === 'calendar' && (isLoggedIn ? <CalendarPage /> : <LoginRequiredView onLoginClick={() => setModalPage('login')} />)}
+        {currentTab === 'main' && (isLoggedIn ? <MainPage userInfo={currentUserInfo} onPredictComplete={handlePredictSuccess} /> : <LoginRequiredView onLoginClick={() => setModalPage('login')} />)}
+        
+        {currentTab === 'calendar' && (isLoggedIn ? <CalendarPage initialDate={calendarTargetDate} /> : <LoginRequiredView onLoginClick={() => setModalPage('login')} />)}
+        
         {currentTab === 'mypage' && (isLoggedIn ? <MyPage userInfo={currentUserInfo} onLogout={handleLogout} onUpdateUser={handleUserInfoUpdate} /> : <LoginRequiredView onLoginClick={() => setModalPage('login')} />)}
       </div>
       
