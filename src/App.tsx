@@ -27,7 +27,7 @@ const IconUser = ({ active }: { active: boolean }) => (
 );
 
 // --- [2] 타입 정의 ---
-type NutrientVector = { calorie: number; total_carb: number; sugar: number; protein: number; total_fat: number; };
+type NutrientVector = { calorie: number; total_carb: number; protein: number; total_fat: number; };
 type UserInfo = { name: string; gender: 'male' | 'female'; birthYear: string; birthMonth: string; birthDay: string; height: string; weight: string; };
 type PredictionRecord = { id: string; fullDate: string; displayTime: string; value: number; };
 type ModalState = 'hidden' | 'login' | 'signup';
@@ -39,13 +39,25 @@ type TopMeal = { mealName: string; count: number; };
 
 // --- [3] 계산 로직 ---
 const MODEL_NO = {
-  baseline: { intercept: 107.45, gender: -0.148, age: 0.002, bmi: -0.004 },
-  meal: { intercept: 17.457, calorie: -0.011, total_carb: 0.23, sugar: -0.139, protein: 0.071, total_fat: -0.008 }
+  intercept: 88.746 + (-14.366),  
+  gender: 2.108,
+  age: 0.139,
+  bmi: 0.403,
+  calorie: 0.016,
+  carbs: 0.112,
+  protein: -0.139,
+  fat: -0.126
 };
 
 const MODEL_YES = {
-  baseline: { intercept: 163.794, gender: 0.352, age: 0.091, bmi: -0.081 },
-  meal: { intercept: 17.457, calorie: -0.011, total_carb: 0.23, sugar: -0.139, protein: 0.071, total_fat: -0.008 }
+  intercept: 128.084 + 65.697,   
+  gender: -5.454,
+  age: -0.518,
+  bmi: -0.63,
+  calorie: 0.076,
+  carbs: 0.086,
+  protein: -0.473,
+  fat: -0.655
 };
 
 type UserFactors = {
@@ -54,12 +66,26 @@ type UserFactors = {
   gender: 'male' | 'female';
 };
 
-const hybridPredict = (nutrients: NutrientVector, user: UserFactors, hasDiabetes: boolean): number => {
+const hybridPredict = (
+  nutrients: NutrientVector,
+  user: UserFactors,
+  hasDiabetes: boolean
+): number => {
+
   const M = hasDiabetes ? MODEL_YES : MODEL_NO;
   const genderBinary = user.gender === "male" ? 1 : 0;
 
-  const baseline = M.baseline.intercept + M.baseline.gender * genderBinary + M.baseline.age * user.age + M.baseline.bmi * user.bmi;
-  const delta = M.meal.intercept + M.meal.calorie * nutrients.calorie + M.meal.total_carb * nutrients.total_carb + M.meal.sugar * nutrients.sugar + M.meal.protein * nutrients.protein + M.meal.total_fat * nutrients.total_fat;
+  const baseline =
+    M.intercept +
+    M.gender * genderBinary +
+    M.age * user.age +
+    M.bmi * user.bmi;
+
+  const delta =
+    M.calorie * nutrients.calorie +
+    M.carbs * nutrients.total_carb +
+    M.protein * nutrients.protein +
+    M.fat * nutrients.total_fat;
 
   let predicted = baseline + delta;
   predicted = Math.max(80, Math.min(250, predicted));
@@ -585,7 +611,7 @@ const MainPage = ({ userInfo, onPredictComplete }: { userInfo: UserInfo | null; 
   const addFood = (food: any) => {
       const newFood: SelectedFood = {
           name: food.foodName,
-          nutrients: { calorie: Number(food.energy || 0), total_carb: Number(food.carbohydrates || 0), sugar: Number(food.sugars || 0), protein: Number(food.protein || 0), total_fat: Number(food.fat || 0) },
+          nutrients: { calorie: Number(food.energy || 0), total_carb: Number(food.carbohydrates || 0), protein: Number(food.protein || 0), total_fat: Number(food.fat || 0) },
           portion: 1
       };
       setSelectedFoods([...selectedFoods, newFood]); setSearchResults([]); setSearchText('');
@@ -627,7 +653,7 @@ const MainPage = ({ userInfo, onPredictComplete }: { userInfo: UserInfo | null; 
 
     try {
       let resultValue = 0;
-      let totalNutrients: NutrientVector = { calorie: 0, total_carb: 0, sugar: 0, protein: 0, total_fat: 0 };
+      let totalNutrients: NutrientVector = { calorie: 0, total_carb: 0, protein: 0, total_fat: 0 };
       let mealDescription = '';
 
       if (mealInputType === 'text') {
@@ -639,7 +665,6 @@ const MainPage = ({ userInfo, onPredictComplete }: { userInfo: UserInfo | null; 
         selectedFoods.forEach(food => {
           totalNutrients.calorie += food.nutrients.calorie * food.portion;
           totalNutrients.total_carb += food.nutrients.total_carb * food.portion;
-          totalNutrients.sugar += food.nutrients.sugar * food.portion;
           totalNutrients.protein += food.nutrients.protein * food.portion;
           totalNutrients.total_fat += food.nutrients.total_fat * food.portion;
         });
@@ -671,7 +696,6 @@ const MainPage = ({ userInfo, onPredictComplete }: { userInfo: UserInfo | null; 
                 const currentNutrients = { 
                     calorie: parseFloat(jsonData.calorie) || 0, 
                     total_carb: parseFloat(jsonData.total_carb) || 0, 
-                    sugar: parseFloat(jsonData.sugar) || 0, 
                     protein: parseFloat(jsonData.protein) || 0, 
                     total_fat: parseFloat(jsonData.total_fat) || 0 
                 };
